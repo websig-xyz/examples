@@ -89,9 +89,11 @@ export default function Home() {
         iframe = document.createElement('iframe')
         iframe.id = 'websig-iframe'
         iframe.setAttribute('data-testid', 'porto')
+        // Critical: allow WebAuthn in iframe with proper permissions
         iframe.setAttribute('allow', `publickey-credentials-get ${WEBSIG_URL}; publickey-credentials-create ${WEBSIG_URL}; clipboard-write`)
         iframe.setAttribute('tabindex', '0')
-        iframe.setAttribute('sandbox', 'allow-forms allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox')
+        // Remove sandbox or use minimal restrictions - sandbox blocks WebAuthn
+        // iframe.setAttribute('sandbox', 'allow-forms allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox')
         
         // Build the iframe URL
         const iframeUrl = `${WEBSIG_URL}/connect?origin=${encodeURIComponent(APP_ORIGIN)}&name=${encodeURIComponent(APP_NAME)}&seamless=true`
@@ -255,8 +257,23 @@ export default function Home() {
       }
     }
 
+    // Add escape key handler to close iframe
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        const dialog = document.getElementById('websig-dialog')
+        if (dialog && (dialog as any).open) {
+          addLog('Escape key pressed - closing iframe')
+          hideIframe()
+        }
+      }
+    }
+
     window.addEventListener('message', handleMessage)
-    return () => window.removeEventListener('message', handleMessage)
+    window.addEventListener('keydown', handleEscape)
+    return () => {
+      window.removeEventListener('message', handleMessage)
+      window.removeEventListener('keydown', handleEscape)
+    }
   }, [WEBSIG_URL, showIframe, hideIframe])
 
   const connectWallet = async () => {
