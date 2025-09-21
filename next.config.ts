@@ -10,6 +10,19 @@ const nextConfig: NextConfig = {
     // your project has type errors.
     ignoreBuildErrors: true,
   },
+  async headers() {
+    return [
+      {
+        source: '/:path*',
+        headers: [
+          {
+            key: 'Permissions-Policy',
+            value: 'publickey-credentials-get=*, publickey-credentials-create=*, camera=*, display-capture=*',
+          },
+        ],
+      },
+    ]
+  },
 };
 
 export default nextConfig;
