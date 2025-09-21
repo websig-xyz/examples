@@ -250,6 +250,11 @@ export default function Home() {
         setWalletStatus('disconnected')
         addLog('User rejected connection')
         hideIframe()
+      } else if (topic === 'websig:error') {
+        addLog(`Error from WebSig: ${payload.error}`)
+        addLog(`Error type: ${payload.type}`)
+        setWalletStatus('disconnected')
+        // Don't hide on error - let user retry
       } else if (event.data.method === 'show-iframe') {
         showIframe() // Porto doesn't pass params
       } else if (event.data.method === 'hide-iframe') {
