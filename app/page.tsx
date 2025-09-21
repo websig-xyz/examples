@@ -89,11 +89,11 @@ export default function Home() {
         iframe = document.createElement('iframe')
         iframe.id = 'websig-iframe'
         iframe.setAttribute('data-testid', 'porto')
-        // Critical: allow WebAuthn in iframe with proper permissions
+        // Porto's exact approach - set permissions to the WebSig origin
         iframe.setAttribute('allow', `publickey-credentials-get ${WEBSIG_URL}; publickey-credentials-create ${WEBSIG_URL}; clipboard-write`)
         iframe.setAttribute('tabindex', '0')
-        // Remove sandbox or use minimal restrictions - sandbox blocks WebAuthn
-        // iframe.setAttribute('sandbox', 'allow-forms allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox')
+        // Porto DOES use sandbox with specific permissions
+        iframe.setAttribute('sandbox', 'allow-forms allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox')
         
         // Build the iframe URL
         const iframeUrl = `${WEBSIG_URL}/connect?origin=${encodeURIComponent(APP_ORIGIN)}&name=${encodeURIComponent(APP_NAME)}&seamless=true`
@@ -255,6 +255,23 @@ export default function Home() {
         addLog(`Error type: ${payload.type}`)
         setWalletStatus('disconnected')
         // Don't hide on error - let user retry
+      } else if (topic === 'websig:fallback_to_popup') {
+        addLog(`WebAuthn blocked in iframe - opening popup instead`)
+        hideIframe() // Close iframe first
+        
+        // Open WebSig in a popup window
+        const popupUrl = `${WEBSIG_URL}/connect?origin=${encodeURIComponent(window.location.origin)}&name=${encodeURIComponent(APP_NAME)}`
+        const popup = window.open(
+          popupUrl,
+          'websig-popup',
+          'width=420,height=600,resizable,scrollbars=yes,status=1'
+        )
+        
+        if (popup) {
+          addLog('Popup opened successfully')
+        } else {
+          addLog('Popup blocked - please allow popups for this site')
+        }
       } else if (event.data.method === 'show-iframe') {
         showIframe() // Porto doesn't pass params
       } else if (event.data.method === 'hide-iframe') {
