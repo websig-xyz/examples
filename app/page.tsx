@@ -277,6 +277,7 @@ export default function Home() {
       addLog('Sending connect message to iframe...')
       
       try {
+        // The iframe's content is from WEBSIG_URL, so that's the target origin
         iframe.contentWindow.postMessage(
           {
             id: messageId,
@@ -287,7 +288,7 @@ export default function Home() {
               seamless: true // Tell WebSig to render in seamless mode
             }
           },
-          WEBSIG_URL // Target origin
+          WEBSIG_URL // Must match iframe's actual origin
         )
       } catch (error) {
         addLog(`Error sending message: ${error}`)
