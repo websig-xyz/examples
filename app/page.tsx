@@ -65,20 +65,21 @@ export default function Home() {
       dialog.setAttribute('aria-label', 'Porto Wallet')
       dialog.setAttribute('hidden', 'until-found')
       
-      // Porto's exact style - FULLY transparent, no backdrop
+      // Porto's exact style - COMPLETELY invisible dialog
       Object.assign(dialog.style, {
-        background: 'transparent', // Fully transparent - no backdrop
-        border: '0',
-        outline: '0',
+        background: 'transparent', // No backdrop at all
+        border: 'none',
+        outline: 'none',
         padding: '0',
+        margin: '0',
         position: 'fixed',
         inset: '0', // Full screen coverage
         maxWidth: '100vw',
         maxHeight: '100vh',
         width: '100%',
         height: '100%',
-        pointerEvents: 'none', // Let clicks pass through to iframe
-        zIndex: '2147483646', // Just below iframe
+        pointerEvents: 'none', // All clicks pass through
+        zIndex: '999999', // High but not max
       })
       
       document.body.appendChild(dialog)
@@ -105,17 +106,17 @@ export default function Home() {
         }
         iframe.onerror = (e) => log(`Iframe error: ${e}`)
         
-        // Porto's exact iframe style - takes full control
+        // Porto's exact iframe style - transparent overlay
         Object.assign(iframe.style, {
           backgroundColor: 'transparent',
-          border: '0',
+          border: 'none',
           colorScheme: 'light dark',
-          height: '100%',
+          height: '100vh',
           left: '0',
           position: 'fixed',
           top: '0',
-          width: '100%',
-          zIndex: '2147483647', // Maximum z-index to ensure it's on top
+          width: '100vw',
+          zIndex: '1000000', // Very high to be on top
           pointerEvents: 'auto', // Iframe handles all interactions
         })
       }
@@ -172,8 +173,9 @@ export default function Home() {
       iframe?.focus()
       // Keep dialog pointer-events as 'none' so iframe gets all clicks
       
+      // Don't hide body overflow - keep page scrollable like Porto
       dialogState.bodyStyle = Object.assign({}, document.body.style) as CSSStyleDeclaration
-      document.body.style.overflow = 'hidden'
+      // document.body.style.overflow = 'hidden' // Commented out - Porto doesn't hide scroll
     }
     
     log('Dialog shown (Porto-style)')
