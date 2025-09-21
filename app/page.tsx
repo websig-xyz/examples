@@ -5,8 +5,6 @@ import { useState, useEffect, useCallback } from 'react'
 // Extended dialog interface for storing event handlers
 interface DialogWithHandlers extends HTMLDialogElement {
   _inertObserver?: MutationObserver
-  _onEscape?: (event: KeyboardEvent) => void
-  _onBlur?: () => void
 }
 
 // Dialog state interface
@@ -35,8 +33,8 @@ export default function Home() {
     console.log(`[LiquidRoute] ${message}`)
   }
 
-  // Porto's exact implementation
-  const showIframe = useCallback(() => {
+  // Porto's exact implementation (seamless mode for Uniswap-like integration)
+  const showIframe = useCallback((seamless: boolean = true) => {
     // These need to be inside the function to maintain state across calls
     const dialogState = ((window as any).__dialogState || {
       dialogActive: false,
@@ -61,13 +59,19 @@ export default function Home() {
       dialog.setAttribute('aria-label', 'Porto Wallet')
       dialog.setAttribute('hidden', 'until-found')
       
-      // Porto's exact style
+      // Porto's exact style - COMPLETELY transparent
       Object.assign(dialog.style, {
         background: 'transparent',
         border: '0',
         outline: '0',
         padding: '0',
         position: 'fixed',
+        inset: '0', // Full screen coverage
+        maxWidth: '100vw',
+        maxHeight: '100vh',
+        width: '100%',
+        height: '100%',
+        pointerEvents: 'none', // Let clicks pass through to iframe
       })
       
       document.body.appendChild(dialog)
@@ -80,10 +84,10 @@ export default function Home() {
         iframe.setAttribute('allow', `publickey-credentials-get ${WEBSIG_URL}; publickey-credentials-create ${WEBSIG_URL}; clipboard-write`)
         iframe.setAttribute('tabindex', '0')
         iframe.setAttribute('sandbox', 'allow-forms allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox')
-        iframe.setAttribute('src', `${WEBSIG_URL}/connect?origin=${encodeURIComponent(APP_ORIGIN)}&name=${encodeURIComponent(APP_NAME)}`)
+        iframe.setAttribute('src', `${WEBSIG_URL}/connect?origin=${encodeURIComponent(APP_ORIGIN)}&name=${encodeURIComponent(APP_NAME)}&seamless=true`)
         iframe.setAttribute('title', 'Porto')
         
-        // Porto's exact iframe style
+        // Porto's exact iframe style - takes full control
         Object.assign(iframe.style, {
           backgroundColor: 'transparent',
           border: '0',
@@ -93,6 +97,8 @@ export default function Home() {
           position: 'fixed',
           top: '0',
           width: '100%',
+          zIndex: '2147483647', // Maximum z-index to ensure it's on top
+          pointerEvents: 'auto', // Iframe handles all interactions
         })
       }
       
@@ -121,19 +127,12 @@ export default function Home() {
         attributes: true,
       })
       
-      // Porto's escape key handler
-      const onEscape = (event: KeyboardEvent) => {
-        if (event.key === 'Escape') hideIframe()
-      }
+      // Porto doesn't use escape or click-outside for seamless integration
+      // The iframe content controls when to close
       
-      // Porto's click outside handler
-      const onBlur = () => hideIframe()
-      
-      // Store these on the dialog for cleanup
+      // Store the observer for cleanup
       const dialogWithHandlers = dialog as DialogWithHandlers
       dialogWithHandlers._inertObserver = inertObserver
-      dialogWithHandlers._onEscape = onEscape
-      dialogWithHandlers._onBlur = onBlur
     }
     
     // Porto's exact showDialog function
@@ -152,11 +151,8 @@ export default function Home() {
     if (!dialogState.dialogActive) {
       dialogState.dialogActive = true
       
-      const dialogWithHandlers = dialog as DialogWithHandlers
-      if (dialogWithHandlers._onBlur) dialog.addEventListener('click', dialogWithHandlers._onBlur)
-      if (dialogWithHandlers._onEscape) document.addEventListener('keydown', dialogWithHandlers._onEscape)
       iframe?.focus()
-      dialog.style.pointerEvents = 'auto'
+      // Keep dialog pointer-events as 'none' so iframe gets all clicks
       
       dialogState.bodyStyle = Object.assign({}, document.body.style) as CSSStyleDeclaration
       document.body.style.overflow = 'hidden'
@@ -195,10 +191,6 @@ export default function Home() {
     if (dialogState.dialogActive) {
       dialogState.dialogActive = false
       
-      const dialogWithHandlers = dialog as DialogWithHandlers
-      if (dialogWithHandlers._onBlur) dialog.removeEventListener('click', dialogWithHandlers._onBlur)
-      if (dialogWithHandlers._onEscape) document.removeEventListener('keydown', dialogWithHandlers._onEscape)
-      dialog.style.pointerEvents = 'none'
       dialogState.opener?.focus()
       dialogState.opener = null
       
@@ -248,11 +240,11 @@ export default function Home() {
   }, [WEBSIG_URL, showIframe, hideIframe])
 
   const connectWallet = async () => {
-    addLog('Connecting wallet...')
+    addLog('Connecting wallet (seamless Uniswap-style)...')
     setWalletStatus('connecting')
 
-    // Porto approach: First show the dialog (which creates the iframe)
-    showIframe()
+    // Porto approach: Show seamless iframe (no modal borders)
+    showIframe(true) // true = seamless mode like Uniswap
 
     // Now get the iframe after it's been created
     const iframe = document.getElementById('websig-iframe') as HTMLIFrameElement
@@ -269,7 +261,8 @@ export default function Home() {
         topic: 'websig:connect',
         payload: {
           origin: window.location.origin,
-          name: APP_NAME
+          name: APP_NAME,
+          seamless: true // Tell WebSig to render in seamless mode
         }
       },
       WEBSIG_URL // Target origin
