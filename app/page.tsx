@@ -251,14 +251,15 @@ export default function Home() {
     addLog('Connecting wallet...')
     setWalletStatus('connecting')
 
+    // Porto approach: First show the dialog (which creates the iframe)
+    showIframe()
+
+    // Now get the iframe after it's been created
     const iframe = document.getElementById('websig-iframe') as HTMLIFrameElement
     if (!iframe || !iframe.contentWindow) {
-      addLog('Error: iframe not found')
+      addLog('Error: iframe not found after creation')
       return
     }
-
-    // Porto approach: Just show the dialog
-    showIframe()
 
     // Send connect message exactly like Porto does (with id, topic, payload)
     const messageId = crypto.randomUUID()
@@ -278,14 +279,15 @@ export default function Home() {
   const signTransaction = async () => {
     addLog('Signing transaction...')
     
+    // Porto approach: First show the dialog
+    showIframe()
+    
+    // Now get the iframe after it's shown
     const iframe = document.getElementById('websig-iframe') as HTMLIFrameElement
     if (!iframe || !iframe.contentWindow) {
-      addLog('Error: iframe not found')
+      addLog('Error: iframe not found after creation')
       return
     }
-
-    // Porto approach: Just show the dialog
-    showIframe()
 
     // Send transaction message exactly like Porto (with id)
     const messageId = crypto.randomUUID()
