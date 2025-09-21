@@ -35,6 +35,12 @@ export default function Home() {
 
   // Porto's exact implementation (seamless mode for Uniswap-like integration)
   const showIframe = useCallback((seamless: boolean = true) => {
+    // Helper function for logging within this scope
+    const log = (message: string) => {
+      const timestamp = new Date().toLocaleTimeString()
+      setLogs(prev => [...prev, `[${timestamp}] ${message}`])
+      console.log(`[LiquidRoute] ${message}`)
+    }
     // These need to be inside the function to maintain state across calls
     const dialogState = ((window as any).__dialogState || {
       dialogActive: false,
@@ -59,9 +65,9 @@ export default function Home() {
       dialog.setAttribute('aria-label', 'Porto Wallet')
       dialog.setAttribute('hidden', 'until-found')
       
-      // Porto's exact style - COMPLETELY transparent
+      // Porto's exact style - FULLY transparent, no backdrop
       Object.assign(dialog.style, {
-        background: 'transparent',
+        background: 'transparent', // Fully transparent - no backdrop
         border: '0',
         outline: '0',
         padding: '0',
@@ -72,6 +78,7 @@ export default function Home() {
         width: '100%',
         height: '100%',
         pointerEvents: 'none', // Let clicks pass through to iframe
+        zIndex: '2147483646', // Just below iframe
       })
       
       document.body.appendChild(dialog)
@@ -84,8 +91,16 @@ export default function Home() {
         iframe.setAttribute('allow', `publickey-credentials-get ${WEBSIG_URL}; publickey-credentials-create ${WEBSIG_URL}; clipboard-write`)
         iframe.setAttribute('tabindex', '0')
         iframe.setAttribute('sandbox', 'allow-forms allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox')
-        iframe.setAttribute('src', `${WEBSIG_URL}/connect?origin=${encodeURIComponent(APP_ORIGIN)}&name=${encodeURIComponent(APP_NAME)}&seamless=true`)
+        
+        // Build the iframe URL
+        const iframeUrl = `${WEBSIG_URL}/connect?origin=${encodeURIComponent(APP_ORIGIN)}&name=${encodeURIComponent(APP_NAME)}&seamless=true`
+        log(`Loading iframe: ${iframeUrl}`)
+        iframe.setAttribute('src', iframeUrl)
         iframe.setAttribute('title', 'Porto')
+        
+        // Add load/error handlers for debugging
+        iframe.onload = () => log('Iframe loaded successfully')
+        iframe.onerror = (e) => log(`Iframe error: ${e}`)
         
         // Porto's exact iframe style - takes full control
         Object.assign(iframe.style, {
@@ -158,7 +173,7 @@ export default function Home() {
       document.body.style.overflow = 'hidden'
     }
     
-    addLog('Dialog shown (Porto-style)')
+    log('Dialog shown (Porto-style)')
   }, [WEBSIG_URL, APP_ORIGIN, APP_NAME])
 
   const hideIframe = useCallback(() => {
