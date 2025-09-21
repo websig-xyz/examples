@@ -99,7 +99,10 @@ export default function Home() {
         iframe.setAttribute('title', 'Porto')
         
         // Add load/error handlers for debugging
-        iframe.onload = () => log('Iframe loaded successfully')
+        iframe.onload = () => {
+          log('Iframe loaded successfully')
+          setIframeReady(true) // Mark iframe as ready
+        }
         iframe.onerror = (e) => log(`Iframe error: ${e}`)
         
         // Porto's exact iframe style - takes full control
@@ -261,27 +264,35 @@ export default function Home() {
     // Porto approach: Show seamless iframe (no modal borders)
     showIframe(true) // true = seamless mode like Uniswap
 
-    // Now get the iframe after it's been created
-    const iframe = document.getElementById('websig-iframe') as HTMLIFrameElement
-    if (!iframe || !iframe.contentWindow) {
-      addLog('Error: iframe not found after creation')
-      return
-    }
+    // Wait a bit for iframe to be ready, then send message
+    setTimeout(() => {
+      const iframe = document.getElementById('websig-iframe') as HTMLIFrameElement
+      if (!iframe || !iframe.contentWindow) {
+        addLog('Error: iframe not found after creation')
+        return
+      }
 
-    // Send connect message exactly like Porto does (with id, topic, payload)
-    const messageId = crypto.randomUUID()
-    iframe.contentWindow.postMessage(
-      {
-        id: messageId,
-        topic: 'websig:connect',
-        payload: {
-          origin: window.location.origin,
-          name: APP_NAME,
-          seamless: true // Tell WebSig to render in seamless mode
-        }
-      },
-      WEBSIG_URL // Target origin
-    )
+      // Send connect message exactly like Porto does (with id, topic, payload)
+      const messageId = crypto.randomUUID()
+      addLog('Sending connect message to iframe...')
+      
+      try {
+        iframe.contentWindow.postMessage(
+          {
+            id: messageId,
+            topic: 'websig:connect',
+            payload: {
+              origin: window.location.origin,
+              name: APP_NAME,
+              seamless: true // Tell WebSig to render in seamless mode
+            }
+          },
+          WEBSIG_URL // Target origin
+        )
+      } catch (error) {
+        addLog(`Error sending message: ${error}`)
+      }
+    }, 500) // Give iframe 500ms to fully load
   }
 
   const signTransaction = async () => {
