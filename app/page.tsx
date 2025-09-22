@@ -65,20 +65,23 @@ export default function Home() {
       dialog.setAttribute('aria-label', 'Porto Wallet')
       dialog.setAttribute('hidden', 'until-found')
       
-      // Porto's exact style - COMPLETELY invisible dialog
+      // Porto's exact style - Modal dialog container
       Object.assign(dialog.style, {
-        background: 'transparent', // No backdrop at all
+        background: 'transparent', // Dialog itself is transparent
         border: 'none',
         outline: 'none',
         padding: '0',
-        margin: '0',
+        margin: 'auto', // Center the dialog
         position: 'fixed',
-        inset: '0', // Full screen coverage
-        maxWidth: '100vw',
-        maxHeight: '100vh',
+        top: '50%',
+        left: '50%',
+        transform: 'translate(-50%, -50%)',
+        maxWidth: '420px', // Porto's exact modal width
+        maxHeight: '600px', // Porto's exact modal height
         width: '100%',
-        height: '100%',
-        pointerEvents: 'none', // All clicks pass through
+        height: 'auto',
+        borderRadius: '12px',
+        overflow: 'hidden',
         zIndex: '999999', // High but not max
       })
       
@@ -95,8 +98,8 @@ export default function Home() {
         // Porto DOES use sandbox with specific permissions
         iframe.setAttribute('sandbox', 'allow-forms allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox')
         
-        // Build the iframe URL
-        const iframeUrl = `${WEBSIG_URL}/connect?origin=${encodeURIComponent(APP_ORIGIN)}&name=${encodeURIComponent(APP_NAME)}&seamless=true`
+        // Build the iframe URL - no seamless mode for modal
+        const iframeUrl = `${WEBSIG_URL}/connect?origin=${encodeURIComponent(APP_ORIGIN)}&name=${encodeURIComponent(APP_NAME)}`
         log(`Loading iframe: ${iframeUrl}`)
         iframe.setAttribute('src', iframeUrl)
         iframe.setAttribute('title', 'Porto')
@@ -108,26 +111,24 @@ export default function Home() {
         }
         iframe.onerror = (e) => log(`Iframe error: ${e}`)
         
-        // Porto's exact iframe style - transparent overlay
+        // Porto's exact iframe style - fills the dialog
         Object.assign(iframe.style, {
-          backgroundColor: 'transparent',
+          backgroundColor: 'white',
           border: 'none',
           colorScheme: 'light dark',
-          height: '100vh',
-          left: '0',
-          position: 'fixed',
-          top: '0',
-          width: '100vw',
-          zIndex: '1000000', // Very high to be on top
-          pointerEvents: 'auto', // Iframe handles all interactions
+          height: '600px', // Fixed height for modal
+          width: '100%',
+          borderRadius: '12px',
+          display: 'block',
         })
       }
       
-      // Add Porto's exact CSS
+      // Add Porto's exact CSS with backdrop
       const style = document.createElement('style')
       style.innerHTML = `
         dialog[data-porto]::backdrop {
-          background: transparent!important;
+          background: rgba(0, 0, 0, 0.5)!important; /* Semi-transparent backdrop */
+          backdrop-filter: blur(4px);
         }
       `
       
@@ -148,8 +149,28 @@ export default function Home() {
         attributes: true,
       })
       
-      // Porto doesn't use escape or click-outside for seamless integration
-      // The iframe content controls when to close
+      // Store hideIframe function globally for event handlers
+      (window as any).__hideWebSigDialog = () => {
+        // We'll trigger the hide from outside
+        window.postMessage({ topic: 'websig:close_dialog' }, window.location.origin)
+      }
+      
+      // Add escape key handler for the dialog
+      dialog.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+          const hideDialog = (window as any).__hideWebSigDialog
+          if (typeof hideDialog === 'function') hideDialog()
+        }
+      })
+      
+      // Add click-outside handler for the backdrop
+      dialog.addEventListener('click', (e) => {
+        // Only close if clicking the backdrop (not the iframe)
+        if (e.target === dialog) {
+          const hideDialog = (window as any).__hideWebSigDialog
+          if (typeof hideDialog === 'function') hideDialog()
+        }
+      })
       
       // Store the observer for cleanup
       const dialogWithHandlers = dialog as DialogWithHandlers
@@ -173,10 +194,11 @@ export default function Home() {
       dialogState.dialogActive = true
       
       iframe?.focus()
-      // Keep dialog pointer-events as 'none' so iframe gets all clicks
+      // Dialog handles clicks normally
       
-      // Don't hide body overflow - keep page scrollable like Porto
+      // Hide body overflow to prevent scrolling when modal is open
       dialogState.bodyStyle = Object.assign({}, document.body.style) as CSSStyleDeclaration
+      document.body.style.overflow = 'hidden'
       // document.body.style.overflow = 'hidden' // Commented out - Porto doesn't hide scroll
     }
     
@@ -229,6 +251,12 @@ export default function Home() {
     
     // Setup message handler for iframe communication (Porto-style)
     const handleMessage = (event: MessageEvent) => {
+      // Handle internal close dialog message
+      if (event.origin === window.location.origin && event.data.topic === 'websig:close_dialog') {
+        hideIframe()
+        return
+      }
+      
       // Only accept messages from WebSig
       if (event.origin !== WEBSIG_URL) {
         addLog(`Ignoring message from untrusted origin: ${event.origin}`)
@@ -302,8 +330,8 @@ export default function Home() {
     addLog('Connecting wallet (seamless Uniswap-style)...')
     setWalletStatus('connecting')
 
-    // Porto approach: Show seamless iframe (no modal borders)
-    showIframe(true) // true = seamless mode like Uniswap
+    // Porto approach: Show modal dialog with iframe
+    showIframe(false) // false = modal mode with backdrop
 
     // Wait a bit for iframe to be ready, then send message
     setTimeout(() => {
@@ -326,7 +354,7 @@ export default function Home() {
             payload: {
               origin: window.location.origin,
               name: APP_NAME,
-              seamless: true // Tell WebSig to render in seamless mode
+              seamless: false // Modal mode, not seamless
             }
           },
           WEBSIG_URL // Must match iframe's actual origin
