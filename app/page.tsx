@@ -68,7 +68,7 @@ export default function Home() {
       
       // Porto's exact style - Modal dialog container
       Object.assign(dialog.style, {
-        background: 'white', // White background for visibility
+        background: 'transparent', // Transparent so iframe shows through
         border: 'none',
         outline: 'none',
         padding: '0',
@@ -81,8 +81,8 @@ export default function Home() {
         height: '600px', // Fixed height
         borderRadius: '12px',
         overflow: 'hidden',
-        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)',
         zIndex: '999999', // High but not max
+        pointerEvents: 'auto', // Ensure dialog accepts pointer events
       })
       
       document.body.appendChild(dialog)
@@ -95,8 +95,8 @@ export default function Home() {
         // Porto's exact approach - set permissions to the WebSig origin
         iframe.setAttribute('allow', `publickey-credentials-get ${WEBSIG_URL}; publickey-credentials-create ${WEBSIG_URL}; clipboard-write`)
         iframe.setAttribute('tabindex', '0')
-        // Porto DOES use sandbox with specific permissions
-        iframe.setAttribute('sandbox', 'allow-forms allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox')
+        // Remove sandbox to allow full interaction
+        // iframe.setAttribute('sandbox', 'allow-forms allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox')
         
         // Build the iframe URL - no seamless mode for modal
         const iframeUrl = `${WEBSIG_URL}/connect?origin=${encodeURIComponent(APP_ORIGIN)}&name=${encodeURIComponent(APP_NAME)}`
@@ -108,6 +108,11 @@ export default function Home() {
         iframe.onload = () => {
           log('Iframe loaded successfully')
           setIframeReady(true) // Mark iframe as ready
+          // Focus the iframe after it loads
+          setTimeout(() => {
+            iframe.focus()
+            iframe.contentWindow?.focus()
+          }, 100)
         }
         iframe.onerror = (e) => log(`Iframe error: ${e}`)
         
@@ -118,8 +123,12 @@ export default function Home() {
           colorScheme: 'light dark',
           height: '100%', // Fill dialog height
           width: '100%',
-          borderRadius: '0', // No radius on iframe since dialog has it
+          borderRadius: '12px', // Match dialog radius
           display: 'block',
+          pointerEvents: 'auto', // Ensure iframe accepts all pointer events
+          position: 'relative',
+          zIndex: '1', // Ensure iframe is on top within dialog
+          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)', // Add shadow for visibility
         })
       }
       
@@ -129,6 +138,13 @@ export default function Home() {
         dialog[data-porto]::backdrop {
           background: rgba(0, 0, 0, 0.5)!important; /* Semi-transparent backdrop */
           backdrop-filter: blur(4px);
+          pointer-events: auto!important;
+        }
+        dialog[data-porto] {
+          pointer-events: auto!important;
+        }
+        dialog[data-porto] iframe {
+          pointer-events: auto!important;
         }
       `
       
