@@ -16,6 +16,7 @@ interface DialogState {
 }
 
 export default function Home() {
+  const [mounted, setMounted] = useState(false)
   const [walletStatus, setWalletStatus] = useState<'disconnected' | 'connecting' | 'connected'>('disconnected')
   const [walletAddress, setWalletAddress] = useState<string>('')
   const [iframeReady, setIframeReady] = useState(false)
@@ -67,7 +68,7 @@ export default function Home() {
       
       // Porto's exact style - Modal dialog container
       Object.assign(dialog.style, {
-        background: 'transparent', // Dialog itself is transparent
+        background: 'white', // White background for visibility
         border: 'none',
         outline: 'none',
         padding: '0',
@@ -76,12 +77,11 @@ export default function Home() {
         top: '50%',
         left: '50%',
         transform: 'translate(-50%, -50%)',
-        maxWidth: '420px', // Porto's exact modal width
-        maxHeight: '600px', // Porto's exact modal height
-        width: '100%',
-        height: 'auto',
+        width: '420px', // Fixed width
+        height: '600px', // Fixed height
         borderRadius: '12px',
         overflow: 'hidden',
+        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)',
         zIndex: '999999', // High but not max
       })
       
@@ -116,9 +116,9 @@ export default function Home() {
           backgroundColor: 'white',
           border: 'none',
           colorScheme: 'light dark',
-          height: '600px', // Fixed height for modal
+          height: '100%', // Fill dialog height
           width: '100%',
-          borderRadius: '12px',
+          borderRadius: '0', // No radius on iframe since dialog has it
           display: 'block',
         })
       }
@@ -135,19 +135,22 @@ export default function Home() {
       dialog.appendChild(style)
       dialog.appendChild(iframe)
       
-      // Porto's 1password workaround
-      const inertObserver = new MutationObserver((mutations) => {
-        for (const mutation of mutations) {
-          if (mutation.type !== 'attributes') continue
-          const name = mutation.attributeName
-          if (!name || name !== 'inert') continue
-          dialog.removeAttribute(name)
-        }
-      })
-      inertObserver.observe(dialog, {
-        attributeOldValue: true,
-        attributes: true,
-      })
+      // Porto's 1password workaround - only create if MutationObserver exists
+      let inertObserver: MutationObserver | null = null
+      if (typeof MutationObserver !== 'undefined') {
+        inertObserver = new MutationObserver((mutations) => {
+          for (const mutation of mutations) {
+            if (mutation.type !== 'attributes') continue
+            const name = mutation.attributeName
+            if (!name || name !== 'inert') continue
+            dialog.removeAttribute(name)
+          }
+        })
+        inertObserver.observe(dialog, {
+          attributeOldValue: true,
+          attributes: true,
+        })
+      }
       
       // Store hideIframe function globally for event handlers
       (window as any).__hideWebSigDialog = () => {
@@ -172,9 +175,11 @@ export default function Home() {
         }
       })
       
-      // Store the observer for cleanup
-      const dialogWithHandlers = dialog as DialogWithHandlers
-      dialogWithHandlers._inertObserver = inertObserver
+      // Store the observer for cleanup (if it exists)
+      if (inertObserver) {
+        const dialogWithHandlers = dialog as DialogWithHandlers
+        dialogWithHandlers._inertObserver = inertObserver
+      }
     }
     
     // Porto's exact showDialog function
@@ -246,7 +251,13 @@ export default function Home() {
     addLog('Dialog hidden (Porto-style)')
   }, [])
 
+  // Handle client-side mounting to avoid hydration issues
   useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  useEffect(() => {
+    if (!mounted) return
     addLog('Page loaded, initializing WebSig iframe integration')
     
     // Setup message handler for iframe communication (Porto-style)
@@ -389,6 +400,20 @@ export default function Home() {
         }
       },
       WEBSIG_URL
+    )
+  }
+
+  // Prevent SSR hydration issues
+  if (!mounted) {
+    return (
+      <main className="min-h-screen bg-gradient-to-br from-gray-900 to-black text-white p-8">
+        <div className="max-w-4xl mx-auto">
+          <div className="animate-pulse">
+            <div className="h-10 bg-gray-800 rounded w-3/4 mb-4"></div>
+            <div className="h-6 bg-gray-800 rounded w-1/2"></div>
+          </div>
+        </div>
+      </main>
     )
   }
 
