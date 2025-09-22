@@ -15,6 +15,11 @@ interface DialogState {
   opener: HTMLElement | null
 }
 
+// IMPORTANT: WebAuthn does NOT work in cross-origin iframes!
+// Porto solves this with session keys (temporary keys that don't need WebAuthn).
+// Since WebSig doesn't have session keys yet, we must use popups for cross-origin.
+// Once WebSig implements session keys, the iframe approach will work.
+
 export default function Home() {
   const [mounted, setMounted] = useState(false)
   const [walletStatus, setWalletStatus] = useState<'disconnected' | 'connecting' | 'connected'>('disconnected')
@@ -354,42 +359,27 @@ export default function Home() {
   }, [WEBSIG_URL, showIframe, hideIframe])
 
   const connectWallet = async () => {
-    addLog('Connecting wallet (seamless Uniswap-style)...')
+    addLog('Connecting wallet...')
     setWalletStatus('connecting')
 
-    // Porto approach: Show modal dialog with iframe
-    showIframe(false) // false = modal mode with backdrop
-
-    // Wait a bit for iframe to be ready, then send message
-    setTimeout(() => {
-      const iframe = document.getElementById('websig-iframe') as HTMLIFrameElement
-      if (!iframe || !iframe.contentWindow) {
-        addLog('Error: iframe not found after creation')
-        return
-      }
-
-      // Send connect message exactly like Porto does (with id, topic, payload)
-      const messageId = crypto.randomUUID()
-      addLog('Sending connect message to iframe...')
-      
-      try {
-        // The iframe's content is from WEBSIG_URL, so that's the target origin
-        iframe.contentWindow.postMessage(
-          {
-            id: messageId,
-            topic: 'websig:connect',
-            payload: {
-              origin: window.location.origin,
-              name: APP_NAME,
-              seamless: false // Modal mode, not seamless
-            }
-          },
-          WEBSIG_URL // Must match iframe's actual origin
-        )
-      } catch (error) {
-        addLog(`Error sending message: ${error}`)
-      }
-    }, 500) // Give iframe 500ms to fully load
+    // Since WebSig doesn't have session keys like Porto,
+    // we must use popup for cross-origin WebAuthn to work
+    addLog('Opening popup for WebAuthn (cross-origin iframe limitation)...')
+    
+    const popupUrl = `${WEBSIG_URL}/connect?origin=${encodeURIComponent(window.location.origin)}&name=${encodeURIComponent(APP_NAME)}`
+    const popup = window.open(
+      popupUrl,
+      'websig-popup',
+      'width=420,height=600,resizable,scrollbars=yes,status=1'
+    )
+    
+    if (popup) {
+      addLog('Popup opened successfully - WebAuthn will work here')
+      // The popup will send a message back when connected
+    } else {
+      addLog('Popup blocked - please allow popups for this site')
+      setWalletStatus('disconnected')
+    }
   }
 
   const signTransaction = async () => {
@@ -437,7 +427,12 @@ export default function Home() {
     <main className="min-h-screen bg-gradient-to-br from-gray-900 to-black text-white p-8">
       <div className="max-w-4xl mx-auto">
         <h1 className="text-4xl font-bold mb-2">LiquidRoute Wallet Integration</h1>
-        <p className="text-gray-400 mb-8">Production cross-origin HTTPS integration with WebSig wallet</p>
+        <p className="text-gray-400 mb-4">Production cross-origin HTTPS integration with WebSig wallet</p>
+        <div className="bg-yellow-900/20 border border-yellow-600/30 rounded-lg p-4 mb-6">
+          <p className="text-yellow-400 text-sm">
+            <strong>Note:</strong> WebAuthn doesn't work in cross-origin iframes. Using popup mode until WebSig implements session keys like Porto.
+          </p>
+        </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           {/* Wallet Status */}
