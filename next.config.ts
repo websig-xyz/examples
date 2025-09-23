@@ -7,7 +7,7 @@ const nextConfig: NextConfig = {
   },
   typescript: {
     // Dangerously allow production builds to successfully complete even if
-    // your project has type errors.
+    // your project has type errors. ok
     ignoreBuildErrors: true,
   },
   async headers() {
